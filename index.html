@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Stratos">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="description" content="Executive productivity hub for Kingshuk">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Stratos | Executive Hub</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg: #060608;
+            --surface: rgba(14, 15, 20, 0.92);
+            --surface-raised: rgba(20, 22, 30, 0.85);
+            --border: rgba(255,255,255,0.07);
+            --border-bright: rgba(99,102,241,0.4);
+            --accent: #6366f1;
+            --accent2: #06b6d4;
+            --accent3: #f472b6;
+            --text: #f1f5f9;
+            --muted: #64748b;
+            --sidebar-w: 260px;
+            --sidebar-col: 72px;
+            --nav-h: 64px;
+            --ease: cubic-bezier(0.4,0,0.2,1);
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+        html { height: 100%; }
+        
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            height: 100%; min-height: 100dvh;
+            overflow: hidden;
+        }
+
+        /* ===== CANVAS BG ===== */
+        #bg-canvas {
+            position: fixed; inset: 0; z-index: 0;
+            opacity: 0.25; pointer-events: none;
+        }
+
+        /* ===== APP SHELL ===== */
+        .app-shell {
+            display: flex; height: 100dvh;
+            padding-top: var(--safe-top);
+        }
+
+        /* ===== SIDEBAR (desktop/tablet) ===== */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--surface);
+            backdrop-filter: blur(24px);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            flex-shrink: 0;
+            transition: width 0.35s var(--ease), transform 0.35s var(--ease);
+            z-index: 100; position: relative;
+            overflow: hidden;
+        }
+        .sidebar.collapsed { width: var(--sidebar-col); }
+
+        .sidebar-logo {
+            height: 68px; display: flex; align-items: center;
+            padding: 0 20px; gap: 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .logo-mark {
+            width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--accent), var(--accent3));
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Syne'; font-weight: 800; font-size: 1rem; color: #fff;
+        }
+        .logo-text {
+            font-family: 'Syne'; font-weight: 800; font-size: 1.15rem;
+            letter-spacing: 3px; color: #fff;
+            white-space: nowrap; opacity: 1;
+            transition: opacity 0.2s;
+        }
+        .sidebar.collapsed .logo-text { opacity: 0; pointer-events: none; }
+
+        .sidebar-toggle {
+            position: absolute; top: 16px; right: 12px;
+            width: 32px; height: 32px; border-radius: 8px;
+            background: transparent; border: none;
+            color: var(--muted); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+        }
+        .sidebar-toggle:hover { color: var(--text); background: var(--border); }
+
+        .nav-list {
+            flex: 1; padding: 12px 10px;
+            overflow-y: auto; overflow-x: hidden;
+        }
+
+        .nav-item {
+            display: flex; align-items: center;
+            padding: 12px 12px; border-radius: 12px;
+            color: var(--muted); text-decoration: none;
+            cursor: pointer; margin-bottom: 4px;
+            transition: 0.2s; white-space: nowrap;
+            position: relative; border: none; background: none;
+            width: 100%; font-family: 'DM Sans'; font-size: 0.9rem;
+        }
+        .nav-item:hover { background: rgba(99,102,241,0.08); color: var(--text); }
+        .nav-item.active { background: rgba(99,102,241,0.15); color: var(--accent); }
+
+        .nav-icon {
+            width: 22px; flex-shrink: 0;
+            font-size: 1rem; text-align: center;
+            margin-right: 14px;
+        }
+        .nav-label { flex: 1; transition: opacity 0.2s; }
+        .sidebar.collapsed .nav-label,
+        .sidebar.collapsed .nav-chevron { opacity: 0; pointer-events: none; }
+        .sidebar.collapsed .nav-icon { margin-right: 0; }
+        .sidebar.collapsed .nav-item { justify-content: center; padding: 14px 0; }
+
+        .nav-chevron { font-size: 0.7rem; transition: transform 0.3s; }
+        .nav-item.open .nav-chevron { transform: rotate(180deg); }
+
+        .submenu {
+            margin-left: 36px; border-left: 1px solid var(--border);
+            overflow: hidden; max-height: 0;
+            transition: max-height 0.4s var(--ease);
+        }
+        .submenu.open { max-height: 600px; }
+        .sidebar.collapsed .submenu { display: none; }
+
+        .sub-item {
+            padding: 9px 14px; font-size: 0.83rem;
+            color: var(--muted); cursor: pointer;
+            border-radius: 8px; margin: 2px 0;
+            transition: 0.2s;
+        }
+        .sub-item:hover, .sub-item.active { color: var(--text); background: rgba(255,255,255,0.04); }
+
+        .nav-divider { height: 1px; background: var(--border); margin: 8px 10px; }
+
+        .nav-danger { color: #fb923c !important; }
+        .nav-danger:hover { background: rgba(251,146,60,0.1) !important; }
+
+        /* ===== MAIN ===== */
+        .main {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            padding: 28px 28px 100px;
+            position: relative; z-index: 1;
+            transition: padding 0.3s var(--ease);
+        }
+
+        /* ===== MOBILE NAV ===== */
+        .mobile-nav {
+            display: none; position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: calc(var(--nav-h) + var(--safe-bottom));
+            padding-bottom: var(--safe-bottom);
+            background: var(--surface);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid var(--border);
+            z-index: 200;
+        }
+        .mobile-nav-inner {
+            display: flex; height: var(--nav-h);
+            align-items: center; justify-content: space-around;
+        }
+        .mob-nav-btn {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 3px;
+            color: var(--muted); cursor: pointer;
+            background: none; border: none;
+            font-family: 'DM Sans'; padding: 8px 12px;
+            border-radius: 12px; transition: 0.2s;
+            font-size: 0.68rem; min-width: 52px;
+        }
+        .mob-nav-btn i { font-size: 1.1rem; }
+        .mob-nav-btn.active { color: var(--accent); }
+        .mob-nav-btn:hover { color: var(--text); }
+
+        /* ===== MOBILE DRAWER ===== */
+        .drawer-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6); z-index: 300;
+            backdrop-filter: blur(4px);
+        }
+        .drawer-overlay.open { display: block; }
+        .mobile-drawer {
+            position: fixed; left: 0; top: 0; bottom: 0;
+            width: min(300px, 85vw);
+            background: var(--surface);
+            backdrop-filter: blur(24px);
+            border-right: 1px solid var(--border);
+            z-index: 301; transform: translateX(-100%);
+            transition: transform 0.35s var(--ease);
+            overflow-y: auto; padding: 20px;
+            padding-top: calc(20px + var(--safe-top));
+        }
+        .mobile-drawer.open { transform: translateX(0); }
+        .drawer-close {
+            float: right; background: none; border: none;
+            color: var(--muted); cursor: pointer; font-size: 1.2rem;
+            padding: 4px; margin-bottom: 20px;
+        }
+
+        /* ===== HEADER ===== */
+        .page-header {
+            display: flex; align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px; gap: 12px;
+        }
+        .welcome-line { font-family: 'Syne'; font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700; }
+        .name-gradient {
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 40%, var(--accent3) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .pfp {
+            width: 46px; height: 46px; border-radius: 50%;
+            border: 2px solid var(--accent);
+            overflow: hidden; cursor: pointer;
+            box-shadow: 0 0 0 4px rgba(99,102,241,0.2);
+        }
+        .pfp img { width: 100%; height: 100%; object-fit: cover; }
+        .icon-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--surface-raised); border: 1px solid var(--border);
+            color: var(--muted); cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 1rem; transition: 0.2s;
+        }
+        .icon-btn:hover { color: var(--text); border-color: var(--border-bright); }
+
+        /* ===== QUICK ACTIONS ===== */
+        .quick-actions {
+            display: flex; gap: 10px; margin-bottom: 24px;
+            overflow-x: auto; padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .quick-actions::-webkit-scrollbar { height: 0; }
+        .qa-btn {
+            display: flex; align-items: center; gap: 8px;
+            padding: 9px 16px; border-radius: 30px;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            color: var(--text); font-size: 0.82rem; font-weight: 500;
+            text-decoration: none; cursor: pointer;
+            white-space: nowrap; flex-shrink: 0;
+            transition: 0.2s; font-family: 'DM Sans';
+        }
+        .qa-btn:hover { border-color: var(--border-bright); transform: translateY(-1px); }
+        .qa-btn i { font-size: 0.9rem; }
+
+        /* ===== GRID LAYOUTS ===== */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1.8fr; gap: 20px; margin-bottom: 20px; }
+        .grid-main { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        /* ===== CARD ===== */
+        .card {
+            background: var(--surface-raised);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 20px; padding: 22px;
+            position: relative; overflow: hidden;
+        }
+        .card-label {
+            font-size: 0.7rem; font-weight: 600; letter-spacing: 2px;
+            color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
+        }
+        .card-title {
+            font-family: 'Syne'; font-size: 1.1rem; font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        /* ===== CLOCK CARD ===== */
+        .clock-card { text-align: center; }
+        #clock {
+            font-family: 'DM Mono'; font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 500; letter-spacing: -1px;
+            background: linear-gradient(135deg, var(--accent2), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        #date { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+
+        /* ===== SESSION CARD ===== */
+        .session-card {
+            background: linear-gradient(135deg, rgba(20,22,30,0.95), rgba(10,11,18,0.95));
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .session-info h3 { font-family: 'Syne'; font-size: 1.1rem; color: #fbbf24; }
+        #session-timer { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+        .btn-join {
+            background: #fbbf24; color: #000; border: none;
+            padding: 12px 22px; border-radius: 50px;
+            font-weight: 700; cursor: pointer; white-space: nowrap;
+            font-size: 0.85rem; transition: 0.2s;
+        }
+        .btn-join:hover { transform: scale(1.04); }
+
+        /* ===== POMODORO ===== */
+        .pomo-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+        #pomo-timer {
+            font-family: 'DM Mono'; font-size: 2.2rem;
+            color: var(--accent); display: block; margin-bottom: 12px;
+        }
+        .pomo-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .pomo-btn {
+            background: none; border: 1px solid var(--accent);
+            color: var(--accent); padding: 8px 20px; border-radius: 30px;
+            cursor: pointer; font-size: 0.82rem; font-weight: 600;
+            transition: 0.2s; font-family: 'DM Sans';
+        }
+        .pomo-btn:hover, .pomo-btn.running { background: var(--accent); color: #fff; }
+        .pomo-phases { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+        .phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: 0.3s; }
+        .phase-dot.done { background: var(--accent); }
+
+        /* ===== PROGRESS BAR ===== */
+        .progress-wrap { margin: 12px 0; }
+        .progress-row {
+            display: flex; justify-content: space-between;
+            font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;
+        }
+        #progress-pct { color: var(--accent2); font-weight: 600; font-family: 'DM Mono'; }
+        .bar-bg {
+            height: 6px; background: rgba(0,0,0,0.3);
+            border-radius: 10px; overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%; border-radius: 10px;
+            background: linear-gradient(90deg, var(--accent2), var(--accent), var(--accent3));
+            transition: width 0.6s var(--ease);
+        }
+
+        /* ===== GOAL INPUT ===== */
+        .goal-input-row { display: flex; gap: 8px; margin: 14px 0; }
+        .goal-input {
+            flex: 1; background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 14px; color: var(--text);
+            outline: none; font-family: 'DM Sans'; font-size: 0.88rem;
+            transition: 0.2s;
+        }
+        .goal-input:focus { border-color: var(--accent); }
+        .goal-input::placeholder { color: var(--muted); }
+        .btn-add {
+            background: var(--accent); color: #fff; border: none;
+            padding: 10px 16px; border-radius: 10px;
+            font-weight: 600; cursor: pointer; font-size: 0.85rem;
+            transition: 0.2s; white-space: nowrap;
+        }
+        .btn-add:hover { transform: scale(1.04); }
+
+        /* ===== GOAL LIST ===== */
+        .goal-list { list-style: none; }
+        .goal-row {
+            display: flex; align-items: center;
+            background: rgba(255,255,255,0.02);
+            padding: 11px 13px; border-radius: 12px;
+            margin-bottom: 7px; border: 1px solid transparent;
+            transition: 0.2s; gap: 12px;
+        }
+        .goal-row:hover { border-color: var(--border); }
+        .goal-row.done { opacity: 0.45; }
+        .goal-row.done .goal-text { text-decoration: line-through; }
+        .check-box {
+            width: 20px; height: 20px; border-radius: 6px;
+            border: 2px solid var(--accent2); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; flex-shrink: 0; transition: 0.2s;
+        }
+        .check-box.checked { background: var(--accent2); border-color: var(--accent2); }
+        .goal-text { flex: 1; font-size: 0.88rem; line-height: 1.4; }
+        .btn-del {
+            color: var(--muted); cursor: pointer; font-size: 0.8rem;
+            padding: 4px; border-radius: 6px; transition: 0.2s;
+            background: none; border: none; flex-shrink: 0;
+        }
+        .btn-del:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+        /* ===== INTEL / NEWS CARD ===== */
+        .intel-icon { font-size: 1.6rem; color: var(--accent); margin-bottom: 10px; }
+        #news-title { font-family: 'Syne'; font-size: 1.05rem; }
+        #news-desc { color: var(--muted); font-size: 0.85rem; margin-top: 6px; line-height: 1.5; }
+        .news-progress-bar {
+            height: 2px; background: rgba(255,255,255,0.05);
+            border-radius: 2px; margin-top: 18px; overflow: hidden;
+        }
+        #news-prog { height: 100%; background: var(--accent); width: 0%; transition: none; }
+
+        /* ===== QUOTE CARD ===== */
+        .quote-card { padding: 0; overflow: hidden; }
+        .quote-img {
+            width: 100%; height: 130px; object-fit: cover;
+            opacity: 0.6;
+        }
+        .quote-body { padding: 18px; }
+        #quote-text { font-style: italic; line-height: 1.6; font-size: 0.88rem; color: #cbd5e1; }
+        #quote-author { color: var(--muted); font-size: 0.78rem; margin-top: 8px; }
+
+        /* ===== NOTES ===== */
+        .notes-area {
+            width: 100%; min-height: 150px;
+            background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px; color: var(--text);
+            resize: vertical; font-family: 'DM Mono'; font-size: 0.82rem;
+            line-height: 1.6; outline: none; transition: 0.2s;
+        }
+        .notes-area:focus { border-color: var(--accent); }
+
+        /* ===== AI ASSISTANT ===== */
+        .ai-panel {
+            position: fixed; bottom: 24px; right: 24px;
+            width: min(340px, calc(100vw - 48px));
+            background: var(--surface);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            z-index: 500; transition: 0.35s var(--ease);
+            overflow: hidden;
+        }
+        .ai-panel.minimized { height: 56px; }
+        .ai-header {
+            padding: 16px 18px; display: flex;
+            align-items: center; justify-content: space-between;
+            cursor: pointer; border-bottom: 1px solid var(--border);
+        }
+        .ai-header-left { display: flex; align-items: center; gap: 10px; }
+        .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: blink 2s infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .ai-title { font-size: 0.9rem; font-weight: 600; }
+        .ai-minimize { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.8rem; }
+        .ai-body { display: flex; flex-direction: column; height: 340px; }
+        .msg-box {
+            flex: 1; overflow-y: auto; padding: 14px 16px;
+            font-size: 0.83rem; line-height: 1.6;
+        }
+        .msg { padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; max-width: 88%; }
+        .msg.ai { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: var(--text); }
+        .msg.user { background: rgba(255,255,255,0.06); margin-left: auto; }
+        .ai-input-row {
+            display: flex; gap: 8px; padding: 12px 14px;
+            border-top: 1px solid var(--border);
+        }
+        .ai-input {
+            flex: 1; background: transparent; border: none;
+            color: var(--text); outline: none; font-family: 'DM Sans';
+            font-size: 0.85rem;
+        }
+        .ai-send {
+            background: none; border: none; color: var(--accent);
+            cursor: pointer; font-size: 1rem; padding: 4px;
+        }
+
+        /* ===== FOCUS MODE ===== */
+        .focus-btn {
+            position: fixed; bottom: 24px; left: 24px;
+            padding: 13px 24px; border-radius: 50px;
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--text); font-weight: 600; cursor: pointer;
+            z-index: 400; display: flex; align-items: center; gap: 8px;
+            font-family: 'DM Sans'; font-size: 0.85rem;
+            transition: 0.2s; backdrop-filter: blur(12px);
+        }
+        .focus-btn:hover { border-color: var(--border-bright); }
+
+        body.focus-mode .sidebar { transform: translateX(-100%); }
+        body.focus-mode .main { padding: 5vh clamp(20px, 10vw, 180px); }
+        body.focus-mode .hide-focus { display: none !important; }
+        body.focus-mode #clock { font-size: clamp(3rem, 10vw, 6rem); }
+        body.focus-mode .mobile-nav { display: none !important; }
+
+        /* ===== TABS ===== */
+        .tabs {
+            display: flex; gap: 6px; overflow-x: auto;
+            padding-bottom: 2px; margin-bottom: 18px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tabs::-webkit-scrollbar { height: 0; }
+        .tab {
+            padding: 7px 14px; border-radius: 30px;
+            background: transparent; border: 1px solid var(--border);
+            color: var(--muted); cursor: pointer; white-space: nowrap;
+            font-size: 0.8rem; font-family: 'DM Sans'; font-weight: 500;
+            transition: 0.2s;
+        }
+        .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .tab:hover:not(.active) { border-color: var(--border-bright); color: var(--text); }
+
+        /* ===== VIEWS ===== */
+        .view { display: none; }
+        .view.active { display: block; }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card { animation: fadeUp 0.4s var(--ease) both; }
+        .card:nth-child(1) { animation-delay: 0.05s; }
+        .card:nth-child(2) { animation-delay: 0.1s; }
+        .card:nth-child(3) { animation-delay: 0.15s; }
+        .card:nth-child(4) { animation-delay: 0.2s; }
+
+        /* ===== INSTALL PROMPT ===== */
+        .install-banner {
+            display: none; align-items: center; gap: 12px;
+            background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3);
+            border-radius: 14px; padding: 12px 16px; margin-bottom: 20px;
+        }
+        .install-banner.show { display: flex; }
+        .install-banner span { flex: 1; font-size: 0.85rem; }
+        .btn-install {
+            background: var(--accent); color: #fff; border: none;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+        }
+        .btn-dismiss {
+            background: none; border: none; color: var(--muted);
+            cursor: pointer; font-size: 1rem; padding: 2px;
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed; bottom: 90px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface-raised); border: 1px solid var(--border);
+            padding: 10px 20px; border-radius: 30px;
+            font-size: 0.85rem; z-index: 999;
+            opacity: 0; transition: 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .mobile-nav { display: flex; flex-direction: column; justify-content: flex-end; }
+            .main { padding: 20px 16px 80px; }
+            .grid-main { grid-template-columns: 1fr; }
+            .focus-btn { bottom: calc(var(--nav-h) + var(--safe-bottom) + 14px); left: 16px; font-size: 0.78rem; padding: 10px 18px; }
+            .ai-panel { bottom: calc(var(--nav-h) + var(--safe-bottom) + 14px); right: 16px; }
+            .page-header { flex-wrap: wrap; }
+        }
+        @media (max-width: 480px) {
+            .session-card { flex-direction: column; align-items: flex-start; }
+            .btn-join { width: 100%; }
+            .grid-2 > .session-card { display: none; } /* hidden on very small, available in menu */
+        }
+        @media (min-width: 769px) and (max-width: 1100px) {
+            :root { --sidebar-w: 220px; }
+            .main { padding: 24px 24px 80px; }
+        }
+
+        /* ===== OFFLINE BADGE ===== */
+        .offline-badge {
+            display: none; position: fixed; top: calc(var(--safe-top) + 8px); right: 12px;
+            background: #ef4444; color: #fff; padding: 4px 12px;
+            border-radius: 20px; font-size: 0.75rem; font-weight: 600; z-index: 999;
+        }
+        body.offline .offline-badge { display: block; }
+    </style>
+</head>
+<body id="body">
+
+<canvas id="bg-canvas"></canvas>
+<div class="offline-badge">⚡ Offline</div>
+
+<!-- ===== INSTALL BANNER ===== -->
+<div class="install-banner" id="install-banner">
+    <i class="fas fa-rocket" style="color:var(--accent)"></i>
+    <span>Install Stratos for the best experience</span>
+    <button class="btn-install" id="btn-install">Install</button>
+    <button class="btn-dismiss" onclick="document.getElementById('install-banner').classList.remove('show')">✕</button>
+</div>
+
+<div class="app-shell">
+
+    <!-- ===== SIDEBAR ===== -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-mark">S</div>
+            <span class="logo-text">STRATOS</span>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" style="margin-left:auto;">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <div class="nav-list">
+            <!-- Goals parent -->
+            <button class="nav-item active" id="goals-nav" onclick="toggleGoalsMenu(event)">
+                <i class="fas fa-bullseye nav-icon"></i>
+                <span class="nav-label">Goals</span>
+                <i class="fas fa-chevron-down nav-chevron" id="goals-chevron"></i>
+            </button>
+            <div class="submenu open" id="goals-sub">
+                <div class="sub-item active" onclick="switchTab('daily',event)">Daily Objectives</div>
+                <div class="sub-item" onclick="switchTab('weekly',event)">Weekly Focus</div>
+                <div class="sub-item" onclick="switchTab('biweekly',event)">Bi-Weekly</div>
+                <div class="sub-item" onclick="switchTab('monthly',event)">Monthly Growth</div>
+                <div class="sub-item" onclick="switchTab('quarterly',event)">Quarterly</div>
+                <div class="sub-item" onclick="switchTab('halfyearly',event)">Half Yearly</div>
+                <div class="sub-item" onclick="switchTab('yearly',event)">Yearly Vision</div>
+            </div>
+
+            <div class="nav-divider"></div>
+
+            <a href="https://prashashak.brightchamps.com/teacher-list" target="_blank" class="nav-item">
+                <i class="fas fa-rocket nav-icon"></i>
+                <span class="nav-label">Prashashak</span>
+            </a>
+            <a href="https://calendar.google.com" target="_blank" class="nav-item">
+                <i class="fas fa-calendar-day nav-icon"></i>
+                <span class="nav-label">Timeline</span>
+            </a>
+            <a href="https://gemini.google.com" target="_blank" class="nav-item">
+                <i class="fas fa-microchip nav-icon"></i>
+                <span class="nav-label">AI Neural</span>
+            </a>
+
+            <div class="nav-divider"></div>
+
+            <button class="nav-item nav-danger" onclick="resetProgress()">
+                <i class="fas fa-sync nav-icon"></i>
+                <span class="nav-label">Reset Sector</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main" id="main-content">
+
+        <!-- HEADER -->
+        <header class="page-header hide-focus">
+            <div>
+                <div class="welcome-line">Welcome, <span class="name-gradient">Kingshuk</span></div>
+                <div style="font-size:0.82rem; color:var(--muted); margin-top:2px;" id="header-date">Loading...</div>
+            </div>
+            <div class="header-right">
+                <button class="icon-btn" onclick="shareWA()" title="Share on WhatsApp">
+                    <i class="fab fa-whatsapp" style="color:#22c55e"></i>
+                </button>
+                <div class="pfp">
+                    <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=100" alt="Kingshuk">
+                </div>
+            </div>
+        </header>
+
+        <!-- INSTALL BANNER (inside main on mobile) -->
+        <div id="install-banner-mobile"></div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="quick-actions hide-focus" id="quick-actions">
+            <a href="https://github.com" target="_blank" class="qa-btn"><i class="fab fa-github"></i> Repository</a>
+            <a href="https://chatgpt.com" target="_blank" class="qa-btn"><i class="fas fa-bolt"></i> GPT-4o</a>
+            <a href="https://youtube.com" target="_blank" class="qa-btn"><i class="fab fa-youtube"></i> Archive</a>
+            <a href="https://claude.ai" target="_blank" class="qa-btn"><i class="fas fa-brain"></i> Claude</a>
+            <button class="qa-btn" onclick="addNewLink()" style="border-style:dashed; opacity:0.6">+ Bind New</button>
+        </div>
+
+        <!-- CLOCK + SESSION -->
+        <div class="grid-2 hide-focus">
+            <div class="card clock-card" id="clock-card">
+                <div id="clock">00:00:00</div>
+                <div id="date">Loading...</div>
+
+                <div class="pomo-section">
+                    <div class="card-label">Pomodoro Ritual</div>
+                    <div class="pomo-phases" id="pomo-phases">
+                        <div class="phase-dot"></div><div class="phase-dot"></div>
+                        <div class="phase-dot"></div><div class="phase-dot"></div>
+                    </div>
+                    <span id="pomo-timer">25:00</span>
+                    <div class="pomo-controls">
+                        <button class="pomo-btn" id="pomo-btn" onclick="togglePomo()">▶ Begin Ritual</button>
+                        <button class="pomo-btn" onclick="resetPomo()">↺ Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card session-card hide-focus" id="session-card">
+                <div class="session-info">
+                    <h3>Kiren's Sessions</h3>
+                    <div id="session-timer">Calculating...</div>
+                    <div style="font-size:0.78rem; color:var(--muted); margin-top:6px;">Mon · Tue · Wed @ 7 PM</div>
+                </div>
+                <button class="btn-join" onclick="window.open('https://meet.google.com/kdk-reax-npm','_blank')">
+                    <i class="fas fa-video"></i> Join Now
+                </button>
+            </div>
+        </div>
+
+        <!-- GOAL TABS -->
+        <div class="tabs hide-focus" id="goal-tabs">
+            <button class="tab active" onclick="switchTab('daily',event)">Daily</button>
+            <button class="tab" onclick="switchTab('weekly',event)">Weekly</button>
+            <button class="tab" onclick="switchTab('biweekly',event)">Bi-Weekly</button>
+            <button class="tab" onclick="switchTab('monthly',event)">Monthly</button>
+            <button class="tab" onclick="switchTab('quarterly',event)">Quarterly</button>
+            <button class="tab" onclick="switchTab('halfyearly',event)">Half-Yearly</button>
+            <button class="tab" onclick="switchTab('yearly',event)">Yearly</button>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div class="grid-main">
+
+            <!-- GOALS CARD -->
+            <div class="card hide-focus">
+                <div class="card-label">Strategic Targets</div>
+                <div class="card-title" id="category-title">Daily Targets ⚡</div>
+
+                <div class="progress-wrap">
+                    <div class="progress-row">
+                        <span>System Integrity</span>
+                        <span id="progress-pct">0%</span>
+                    </div>
+                    <div class="bar-bg"><div class="bar-fill" id="progress-bar" style="width:0%"></div></div>
+                </div>
+
+                <div class="goal-input-row">
+                    <input type="text" id="goal-input" class="goal-input" placeholder="New target..." onkeydown="if(event.key==='Enter') addGoal()">
+                    <button class="btn-add" onclick="addGoal()">ADD</button>
+                </div>
+
+                <div class="goal-list" id="goal-list"></div>
+            </div>
+
+            <!-- INTEL CARD -->
+            <div class="card hide-focus">
+                <div class="card-label">Global Intel</div>
+                <div class="intel-icon" id="news-icon"><i class="fas fa-bolt"></i></div>
+                <div id="news-title" style="font-family:'Syne';font-size:1.05rem;">Initializing...</div>
+                <div id="news-desc" style="color:var(--muted);font-size:0.85rem;margin-top:6px;line-height:1.5">Fetching high-frequency data.</div>
+                <div class="news-progress-bar"><div id="news-prog"></div></div>
+            </div>
+
+            <!-- QUOTE CARD -->
+            <div class="card quote-card hide-focus">
+                <img class="quote-img" id="nature-img" src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=70" alt="nature">
+                <div class="quote-body">
+                    <div id="quote-text" style="font-style:italic;line-height:1.6;font-size:0.88rem;color:#cbd5e1">"The best way to predict the future is to create it."</div>
+                    <div id="quote-author" style="color:var(--muted);font-size:0.78rem;margin-top:8px">— Peter Drucker</div>
+                </div>
+            </div>
+
+            <!-- NOTES CARD -->
+            <div class="card">
+                <div class="card-label hide-focus">Mission Log</div>
+                <textarea class="notes-area" id="notes-area" placeholder="Secure deep work notes..."></textarea>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ===== MOBILE BOTTOM NAV ===== -->
+<nav class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav-inner">
+        <button class="mob-nav-btn active" id="mob-home" onclick="mobNav('home')">
+            <i class="fas fa-home"></i><span>Home</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-goals" onclick="mobNav('goals')">
+            <i class="fas fa-bullseye"></i><span>Goals</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-timer" onclick="mobNav('timer')">
+            <i class="fas fa-clock"></i><span>Timer</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-notes" onclick="mobNav('notes')">
+            <i class="fas fa-sticky-note"></i><span>Notes</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-menu" onclick="openDrawer()">
+            <i class="fas fa-bars"></i><span>Menu</span>
+        </button>
+    </div>
+</nav>
+
+<!-- ===== MOBILE DRAWER ===== -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="mobile-drawer" id="mobile-drawer">
+    <button class="drawer-close" onclick="closeDrawer()"><i class="fas fa-times"></i></button>
+    <div style="clear:both">
+        <div style="font-family:'Syne';font-size:1.2rem;font-weight:800;margin-bottom:20px;">STRATOS</div>
+        <div style="font-size:0.75rem;font-weight:600;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">GOAL TABS</div>
+        <div id="drawer-tabs" style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px;">
+            <div class="sub-item active" onclick="switchTab('daily',event);closeDrawer()">Daily Objectives</div>
+            <div class="sub-item" onclick="switchTab('weekly',event);closeDrawer()">Weekly Focus</div>
+            <div class="sub-item" onclick="switchTab('biweekly',event);closeDrawer()">Bi-Weekly</div>
+            <div class="sub-item" onclick="switchTab('monthly',event);closeDrawer()">Monthly Growth</div>
+            <div class="sub-item" onclick="switchTab('quarterly',event);closeDrawer()">Quarterly</div>
+            <div class="sub-item" onclick="switchTab('halfyearly',event);closeDrawer()">Half Yearly</div>
+            <div class="sub-item" onclick="switchTab('yearly',event);closeDrawer()">Yearly Vision</div>
+        </div>
+        <div style="font-size:0.75rem;font-weight:600;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">LINKS</div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px;">
+            <a href="https://prashashak.brightchamps.com/teacher-list" target="_blank" class="sub-item"><i class="fas fa-rocket" style="margin-right:8px;color:var(--accent)"></i>Prashashak</a>
+            <a href="https://calendar.google.com" target="_blank" class="sub-item"><i class="fas fa-calendar-day" style="margin-right:8px;color:var(--accent)"></i>Google Calendar</a>
+            <a href="https://gemini.google.com" target="_blank" class="sub-item"><i class="fas fa-microchip" style="margin-right:8px;color:var(--accent)"></i>Gemini AI</a>
+            <a href="https://meet.google.com/kdk-reax-npm" target="_blank" class="sub-item"><i class="fas fa-video" style="margin-right:8px;color:#fbbf24"></i>Kiren's Session</a>
+        </div>
+        <button onclick="resetProgress();closeDrawer()" style="width:100%;background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.3);color:#fb923c;padding:11px;border-radius:10px;cursor:pointer;font-family:'DM Sans';font-weight:600;">
+            <i class="fas fa-sync"></i> Reset Current Sector
+        </button>
+    </div>
+</div>
+
+<!-- ===== AI PANEL ===== -->
+<div class="ai-panel" id="ai-panel">
+    <div class="ai-header" onclick="toggleAI()">
+        <div class="ai-header-left">
+            <div class="ai-dot"></div>
+            <span class="ai-title">Sam — Executive AI</span>
+        </div>
+        <button class="ai-minimize"><i class="fas fa-chevron-down" id="ai-chevron"></i></button>
+    </div>
+    <div class="ai-body">
+        <div class="msg-box" id="msg-box">
+            <div class="msg ai">Ready for deployment, Kingshuk. Goal system synced. How can I assist?</div>
+        </div>
+        <div class="ai-input-row">
+            <input type="text" id="ai-input" class="ai-input" placeholder="Query Sam..." onkeydown="if(event.key==='Enter') askAI()">
+            <button class="ai-send" onclick="askAI()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== FOCUS BUTTON ===== -->
+<button class="focus-btn" id="focus-btn" onclick="toggleFocus()">
+    <i class="fas fa-eye-slash"></i> FOCUS MODE
+</button>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast">Saved</div>
+
+<script>
+// ============================================================
+// 1. NEURAL MESH BACKGROUND
+// ============================================================
+(function() {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let pts = [];
+    function init() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        pts = Array.from({length: 70}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35
+        }));
+    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#6366f1';
+        ctx.strokeStyle = 'rgba(99,102,241,0.12)';
+        pts.forEach((p, i) => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2); ctx.fill();
+            for (let j = i + 1; j < pts.length; j++) {
+                const d = Math.hypot(p.x - pts[j].x, p.y - pts[j].y);
+                if (d < 150) {
+                    ctx.globalAlpha = 1 - d / 150;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+            }
+        });
+        requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', init);
+    init(); draw();
+})();
+
+// ============================================================
+// 2. GOAL DATA + LOGIC
+// ============================================================
+const CATEGORIES = {
+    daily: 'Daily Targets ⚡',
+    weekly: 'Weekly Focus 🔮',
+    biweekly: 'Bi-Weekly Focus 📈',
+    monthly: 'Monthly Growth 💎',
+    quarterly: 'Quarterly Review 📊',
+    halfyearly: 'Half-Yearly 📆',
+    yearly: 'Yearly Vision 🏆'
+};
+
+let goals = JSON.parse(localStorage.getItem('stratos_goals_v2')) || {
+    daily: ['Walk 7,000 steps', 'Jogged for 600 Counts', 'Forward Bending for 100 counts', 'Vajrasana 11-15 min'],
+    weekly: ['Upload Finance Video'],
+    biweekly: [],
+    monthly: ['₹70K Income Target'],
+    quarterly: ['Skill Acquisition'],
+    halfyearly: [],
+    yearly: ['Total Corpus ₹6-8L']
+};
+let completed = JSON.parse(localStorage.getItem('stratos_done_v2')) || {
+    daily: [], weekly: [], biweekly: [], monthly: [], quarterly: [], halfyearly: [], yearly: []
+};
+
+let currentTab = 'daily';
+
+function switchTab(tab, e) {
+    currentTab = tab;
+    // Update sidebar sub-items
+    document.querySelectorAll('.sub-item').forEach(el => el.classList.remove('active'));
+    if (e && e.currentTarget) e.currentTarget.classList.add('active');
+    // Update pill tabs
+    document.querySelectorAll('#goal-tabs .tab').forEach((t, idx) => {
+        const tabs = ['daily','weekly','biweekly','monthly','quarterly','halfyearly','yearly'];
+        t.classList.toggle('active', tabs[idx] === tab);
+    });
+    document.getElementById('category-title').textContent = CATEGORIES[tab];
+    renderGoals();
+}
+
+function renderGoals() {
+    const list = goals[currentTab] || [];
+    const done = completed[currentTab] || [];
+    const pct = list.length ? Math.round(done.length / list.length * 100) : 0;
+
+    document.getElementById('progress-pct').textContent = pct + '%';
+    document.getElementById('progress-bar').style.width = pct + '%';
+
+    const container = document.getElementById('goal-list');
+    container.innerHTML = list.map((g, i) => {
+        const isDone = done.includes(g);
+        const hasLink = /https?:\/\/\S+/.test(g);
+        const textContent = hasLink
+            ? g.replace(/(https?:\/\/\S+)/g, `<button onclick="window.open('$1','_blank')" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:0.73rem;">OPEN</button>`)
+            : g;
+        return `
+        <div class="goal-row ${isDone ? 'done' : ''}">
+            <div class="check-box ${isDone ? 'checked' : ''}" onclick="toggleGoal('${g.replace(/'/g,"\\'")}')">
+                ${isDone ? '<i class="fas fa-check" style="font-size:0.65rem"></i>' : ''}
+            </div>
+            <span class="goal-text">${textContent}</span>
+            <button class="btn-del" onclick="removeGoal(${i})"><i class="fas fa-trash-alt"></i></button>
+        </div>`;
+    }).join('');
+}
+
+function addGoal() {
+    const input = document.getElementById('goal-input');
+    const val = input.value.trim();
+    if (!val) return;
+    if (!goals[currentTab]) goals[currentTab] = [];
+    goals[currentTab].push(val);
+    input.value = '';
+    saveData();
+    showToast('Target added ✓');
+}
+
+function toggleGoal(name) {
+    if (!completed[currentTab]) completed[currentTab] = [];
+    const idx = completed[currentTab].indexOf(name);
+    idx > -1 ? completed[currentTab].splice(idx, 1) : completed[currentTab].push(name);
+    saveData();
+}
+
+function removeGoal(index) {
+    const item = goals[currentTab][index];
+    goals[currentTab].splice(index, 1);
+    if (completed[currentTab]) {
+        const d = completed[currentTab].indexOf(item);
+        if (d > -1) completed[currentTab].splice(d, 1);
+    }
+    saveData();
+    showToast('Target removed');
+}
+
+function resetProgress() {
+    if (confirm('Clear progress for ' + CATEGORIES[currentTab] + '?')) {
+        completed[currentTab] = [];
+        saveData();
+        showToast('Sector reset ↺');
+    }
+}
+
+function saveData() {
+    localStorage.setItem('stratos_goals_v2', JSON.stringify(goals));
+    localStorage.setItem('stratos_done_v2', JSON.stringify(completed));
+    renderGoals();
+}
+
+// ============================================================
+// 3. CLOCK & SESSION
+// ============================================================
+function tick() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour12: false });
+    const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('date').textContent = dateStr;
+    document.getElementById('header-date').textContent = dateStr;
+
+    const sessionDays = [1, 2, 3];
+    let next = new Date(now);
+    next.setHours(19, 0, 0, 0);
+    while (!sessionDays.includes(next.getDay()) || next <= now) {
+        next.setDate(next.getDate() + 1);
+        next.setHours(19, 0, 0, 0);
+    }
+    const diff = next - now;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('session-timer').textContent = `⏳ ${h}h ${m}m ${s}s to next session`;
+}
+setInterval(tick, 1000);
+tick();
+
+// ============================================================
+// 4. POMODORO
+// ============================================================
+let pomoInterval = null;
+let timeLeft = 1500;
+let pomoRunning = false;
+let pomoCycle = 0;
+
+function togglePomo() {
+    if (pomoRunning) {
+        clearInterval(pomoInterval);
+        pomoRunning = false;
+        document.getElementById('pomo-btn').textContent = '▶ Begin Ritual';
+        document.getElementById('pomo-btn').classList.remove('running');
+    } else {
+        pomoRunning = true;
+        document.getElementById('pomo-btn').textContent = '⏸ Pause';
+        document.getElementById('pomo-btn').classList.add('running');
+        pomoInterval = setInterval(() => {
+            timeLeft--;
+            updatePomoDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(pomoInterval);
+                pomoRunning = false;
+                pomoCycle = Math.min(pomoCycle + 1, 4);
+                updatePomoDots();
+                showToast('🎯 Ritual Complete! Take a break.');
+                document.getElementById('pomo-btn').textContent = '▶ Begin Ritual';
+                document.getElementById('pomo-btn').classList.remove('running');
+                timeLeft = pomoCycle >= 4 ? 900 : 1500;
+                updatePomoDisplay();
+            }
+        }, 1000);
+    }
+}
+function resetPomo() {
+    clearInterval(pomoInterval);
+    pomoRunning = false; timeLeft = 1500; pomoCycle = 0;
+    updatePomoDisplay(); updatePomoDots();
+    document.getElementById('pomo-btn').textContent = '▶ Begin Ritual';
+    document.getElementById('pomo-btn').classList.remove('running');
+}
+function updatePomoDisplay() {
+    const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+    document.getElementById('pomo-timer').textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+function updatePomoDots() {
+    document.querySelectorAll('.phase-dot').forEach((d, i) => {
+        d.classList.toggle('done', i < pomoCycle);
+    });
+}
+
+// ============================================================
+// 5. NEWS ROTATOR
+// ============================================================
+const newsFeed = [
+    { t: 'Deep Work', d: 'Focus is the modern superpower. High intensity leads to high output.', i: 'fa-brain' },
+    { t: 'Compound Growth', d: 'Small daily improvements result in massive yearly transformations.', i: 'fa-chart-line' },
+    { t: 'Executive State', d: 'Decisions made in calmness yield the highest strategic value.', i: 'fa-crown' },
+    { t: 'Wealth Building', d: 'Money grows on the tree of persistence. Invest in yourself first.', i: 'fa-coins' },
+    { t: 'Leadership Edge', d: 'Leaders create more leaders, not followers. Build your team\'s capacity.', i: 'fa-users' }
+];
+let newsIdx = 0, newsProgress = 0;
+setInterval(() => {
+    newsProgress++;
+    document.getElementById('news-prog').style.width = newsProgress + '%';
+    if (newsProgress >= 100) {
+        newsProgress = 0;
+        newsIdx = (newsIdx + 1) % newsFeed.length;
+        const n = newsFeed[newsIdx];
+        document.getElementById('news-title').textContent = n.t;
+        document.getElementById('news-desc').textContent = n.d;
+        document.getElementById('news-icon').innerHTML = `<i class="fas ${n.i}"></i>`;
+    }
+}, 100);
+
+// ============================================================
+// 6. QUOTES
+// ============================================================
+const QUOTES = [
+    { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+    { text: "Discipline is choosing between what you want now and what you want most.", author: "Abraham Lincoln" },
+    { text: "You do not rise to the level of your goals. You fall to the level of your systems.", author: "James Clear" },
+    { text: "Risk comes from not knowing what you are doing.", author: "Warren Buffett" },
+    { text: "Formal education will make you a living; self-education will make you a fortune.", author: "Jim Rohn" },
+    { text: "Success is the sum of small efforts repeated daily.", author: "Robert Collier" },
+    { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
+    { text: "The best investment you can make is in yourself.", author: "Warren Buffett" },
+    { text: "Great things never come from comfort zones.", author: "Roy T. Bennett" },
+    { text: "Focus on being productive instead of busy.", author: "Tim Ferriss" },
+    { text: "What gets measured gets improved.", author: "Peter Drucker" },
+    { text: "Dream big. Start small. Act now.", author: "Robin Sharma" },
+    { text: "Work harder on yourself than you do on your job.", author: "Jim Rohn" },
+    { text: "Success is a series of small wins.", author: "Unknown" },
+    { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+    { text: "Do not save what is left after spending, but spend what is left after saving.", author: "Warren Buffett" },
+    { text: "Energy and persistence conquer all things.", author: "Benjamin Franklin" },
+    { text: "Fortune favors the bold.", author: "Virgil" },
+    { text: "If you want to lift yourself up, lift up someone else.", author: "Booker T. Washington" },
+    { text: "Leadership is influence, nothing more, nothing less.", author: "John C. Maxwell" },
+    { text: "A goal without a plan is just a wish.", author: "Antoine de Saint-Exupéry" },
+    { text: "The man who moves a mountain begins by carrying away small stones.", author: "Confucius" },
+    { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+    { text: "Don't be busy. Be productive.", author: "Unknown" },
+    { text: "Success doesn't come from what you do occasionally, it comes from what you do consistently.", author: "Marie Forleo" },
+    { text: "Never depend on single income. Make investment to create a second source.", author: "Warren Buffett" },
+    { text: "If you really want to do something, you'll find a way. If you don't, you'll find an excuse.", author: "Jim Rohn" },
+    { text: "The successful warrior is the average man, with laser-like focus.", author: "Bruce Lee" },
+    { text: "Success is walking from failure to failure with no loss of enthusiasm.", author: "Winston Churchill" },
+    { text: "Leaders don't create followers, they create more leaders.", author: "Tom Peters" }
+];
+function showRandomQuote() {
+    const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+    document.getElementById('quote-text').textContent = `"${q.text}"`;
+    document.getElementById('quote-author').textContent = `— ${q.author}`;
+}
+showRandomQuote();
+setInterval(showRandomQuote, 52000);
+
+// ============================================================
+// 7. NOTES PERSISTENCE
+// ============================================================
+const notesArea = document.getElementById('notes-area');
+notesArea.value = localStorage.getItem('stratos_notes') || '';
+notesArea.addEventListener('input', () => localStorage.setItem('stratos_notes', notesArea.value));
+
+// ============================================================
+// 8. UI CONTROLS
+// ============================================================
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+function toggleGoalsMenu(e) {
+    const sub = document.getElementById('goals-sub');
+    const nav = document.getElementById('goals-nav');
+    sub.classList.toggle('open');
+    nav.classList.toggle('open');
+}
+
+let aiMinimized = false;
+function toggleAI() {
+    aiMinimized = !aiMinimized;
+    document.getElementById('ai-panel').classList.toggle('minimized', aiMinimized);
+    const ch = document.getElementById('ai-chevron');
+    ch.className = aiMinimized ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+}
+
+let focusMode = false;
+function toggleFocus() {
+    focusMode = !focusMode;
+    document.body.classList.toggle('focus-mode', focusMode);
+    const btn = document.getElementById('focus-btn');
+    btn.innerHTML = focusMode
+        ? '<i class="fas fa-th"></i> DASHBOARD'
+        : '<i class="fas fa-eye-slash"></i> FOCUS MODE';
+}
+
+function openDrawer() {
+    document.getElementById('drawer-overlay').classList.add('open');
+    document.getElementById('mobile-drawer').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeDrawer() {
+    document.getElementById('drawer-overlay').classList.remove('open');
+    document.getElementById('mobile-drawer').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+// Mobile nav scroll-to-section
+function mobNav(section) {
+    document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mob-' + section).classList.add('active');
+    const targets = { home: '.page-header', goals: '#goal-list', timer: '#clock-card', notes: '#notes-area' };
+    if (targets[section]) {
+        const el = document.querySelector(targets[section]);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function shareWA() {
+    const msg = `🚀 Stratos Progress [${CATEGORIES[currentTab]}]: ${document.getElementById('progress-pct').textContent} Complete.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+}
+
+function addNewLink() {
+    const name = prompt('Button Name:');
+    const url = prompt('URL (with https://):');
+    if (name && url) {
+        const links = JSON.parse(localStorage.getItem('stratos_links') || '[]');
+        links.push({ name, url });
+        localStorage.setItem('stratos_links', JSON.stringify(links));
+        loadCustomLinks();
+        showToast('Link added ✓');
+    }
+}
+function loadCustomLinks() {
+    const links = JSON.parse(localStorage.getItem('stratos_links') || '[]');
+    const container = document.getElementById('quick-actions');
+    document.querySelectorAll('.custom-qa').forEach(el => el.remove());
+    const addBtn = container.querySelector('[style*="dashed"]');
+    links.forEach(l => {
+        const a = document.createElement('a');
+        a.className = 'qa-btn custom-qa';
+        a.href = l.url; a.target = '_blank';
+        a.innerHTML = `<i class="fas fa-link"></i> ${l.name}`;
+        container.insertBefore(a, addBtn);
+    });
+}
+loadCustomLinks();
+
+// ============================================================
+// 9. AI ASSISTANT (Sam)
+// ============================================================
+const aiResponses = {
+    progress: () => {
+        const list = goals[currentTab] || [];
+        const done = (completed[currentTab] || []).length;
+        return `You're at ${list.length ? Math.round(done/list.length*100) : 0}% on ${CATEGORIES[currentTab]}. ${done}/${list.length} targets completed. Keep pushing.`;
+    },
+    goals: () => `Current ${CATEGORIES[currentTab]}: ${(goals[currentTab]||[]).join(', ') || 'No targets set.'}`,
+    time: () => `Current time: ${new Date().toLocaleTimeString([], {hour12:false})}`,
+    default: (q) => {
+        const responses = [
+            `Noted, Kingshuk. Focus on your highest-leverage activity right now.`,
+            `Your system is running. ${CATEGORIES[currentTab]} progress is what matters today.`,
+            `Execute with precision. One task at a time, compounding over time.`,
+            `Strategic thinking engaged. What's your next action?`
+        ];
+        return responses[Math.floor(Math.random() * responses.length)];
+    }
+};
+
+function askAI() {
+    const input = document.getElementById('ai-input');
+    const q = input.value.trim();
+    if (!q) return;
+    const msgBox = document.getElementById('msg-box');
+
+    const userMsg = document.createElement('div');
+    userMsg.className = 'msg user';
+    userMsg.textContent = q;
+    msgBox.appendChild(userMsg);
+    input.value = '';
+
+    const lower = q.toLowerCase();
+    let reply;
+    if (lower.includes('progress') || lower.includes('percent')) reply = aiResponses.progress();
+    else if (lower.includes('goals') || lower.includes('target')) reply = aiResponses.goals();
+    else if (lower.includes('time') || lower.includes('clock')) reply = aiResponses.time();
+    else reply = aiResponses.default(q);
+
+    setTimeout(() => {
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'msg ai';
+        aiMsg.textContent = reply;
+        msgBox.appendChild(aiMsg);
+        msgBox.scrollTop = msgBox.scrollHeight;
+    }, 600);
+
+    msgBox.scrollTop = msgBox.scrollHeight;
+    if (aiMinimized) toggleAI();
+}
+
+// ============================================================
+// 10. TOAST
+// ============================================================
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// 11. OFFLINE DETECTION
+// ============================================================
+window.addEventListener('online', () => document.body.classList.remove('offline'));
+window.addEventListener('offline', () => document.body.classList.add('offline'));
+if (!navigator.onLine) document.body.classList.add('offline');
+
+// ============================================================
+// 12. PWA INSTALL PROMPT
+// ============================================================
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('install-banner').classList.add('show');
+});
+document.getElementById('btn-install').addEventListener('click', async () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        document.getElementById('install-banner').classList.remove('show');
+        if (outcome === 'accepted') showToast('✅ Stratos installed!');
+    }
+});
+window.addEventListener('appinstalled', () => {
+    document.getElementById('install-banner').classList.remove('show');
+    showToast('✅ Stratos installed successfully!');
+});
+
+// ============================================================
+// 13. SERVICE WORKER REGISTRATION
+// ============================================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+            console.log('SW registered:', reg.scope);
+        }).catch(err => console.log('SW failed:', err));
+    });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderGoals();
+</script>
+</body>
+</html>
