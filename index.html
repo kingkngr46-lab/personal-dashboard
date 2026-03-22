@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Stratos">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Stratos | Executive Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+/* ═══ TOKENS ═══════════════════════════════════════════ */
+:root {
+    --bg:     #060608;
+    --surf:   rgba(14,15,22,0.97);
+    --surf2:  rgba(22,24,34,0.95);
+    --bdr:    rgba(255,255,255,0.07);
+    --bdrHi:  rgba(99,102,241,0.45);
+    --acc:    #6366f1;
+    --cyan:   #06b6d4;
+    --pink:   #f472b6;
+    --txt:    #f1f5f9;
+    --muted:  #64748b;
+    --ease:   cubic-bezier(.4,0,.2,1);
+    --sat: env(safe-area-inset-top,    0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --bot: 64px; /* bottom nav height */
+}
+
+/* ═══ RESET ═════════════════════════════════════════════ */
+*,*::before,*::after { margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent; }
+html { height:-webkit-fill-available; }
+body { background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-height:100vh;min-height:-webkit-fill-available; }
+::-webkit-scrollbar { width:3px;height:3px; }
+::-webkit-scrollbar-thumb { background:var(--acc);border-radius:6px; }
+a { text-decoration:none; }
+
+/* ═══ CANVAS ════════════════════════════════════════════ */
+#bg-canvas { position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.2; }
+
+/* ═══ OFFLINE BADGE ═════════════════════════════════════ */
+.offline-badge { display:none;position:fixed;top:calc(var(--sat)+8px);right:12px;background:#ef4444;color:#fff;padding:4px 12px;border-radius:20px;font-size:.7rem;font-weight:700;z-index:9999; }
+body.offline .offline-badge { display:block; }
+
+/* ═══ TOAST ══════════════════════════════════════════════ */
+.toast { position:fixed;bottom:calc(var(--bot) + var(--sab) + 14px);left:50%;transform:translateX(-50%) translateY(10px);background:var(--surf2);border:1px solid var(--bdr);padding:9px 20px;border-radius:30px;font-size:.82rem;z-index:9998;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap; }
+.toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+
+/* ═══ INSTALL BANNER ════════════════════════════════════ */
+.install-banner { display:none;align-items:center;gap:10px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:14px;padding:11px 14px;margin:0 16px 14px;position:relative;z-index:1; }
+.install-banner.show { display:flex; }
+.install-banner span { flex:1;font-size:.8rem; }
+.btn-install { background:var(--acc);color:#fff;border:none;padding:7px 13px;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700;white-space:nowrap; }
+.btn-dismiss { background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem; }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE LAYOUT  (default — 320px and up)
+════════════════════════════════════════════════════════ */
+
+/* Scroll container — the whole page scrolls */
+.main-wrap {
+    position:relative;z-index:1;
+    padding-top:calc(var(--sat) + 12px);
+    padding-bottom:calc(var(--bot) + var(--sab) + 20px);
+}
+
+/* ── Header ── */
+.page-header { display:flex;align-items:flex-start;justify-content:space-between;padding:14px 16px 0;gap:10px; }
+.welcome-line { font-family:'Syne';font-weight:700;font-size:clamp(1.35rem,6.5vw,2rem);line-height:1.2; }
+.name-grad { background:linear-gradient(135deg,#fff 0%,var(--acc) 45%,var(--pink) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.hdr-sub { font-size:.76rem;color:var(--muted);margin-top:4px; }
+.hdr-right { display:flex;align-items:center;gap:8px;flex-shrink:0;padding-top:2px; }
+.pfp { width:42px;height:42px;border-radius:50%;border:2px solid var(--acc);overflow:hidden;box-shadow:0 0 0 3px rgba(99,102,241,.18); }
+.pfp img { width:100%;height:100%;object-fit:cover; }
+.icon-btn { width:38px;height:38px;border-radius:50%;background:var(--surf2);border:1px solid var(--bdr);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:.2s; }
+
+/* ── Quick Actions ── */
+.quick-actions { display:flex;gap:8px;overflow-x:auto;padding:12px 16px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
+.quick-actions::-webkit-scrollbar { display:none; }
+.qa-btn { display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:30px;background:var(--surf2);border:1px solid var(--bdr);color:var(--txt);font-size:.76rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.2s;font-family:'DM Sans'; }
+
+/* ── Section spacing ── */
+.section { padding:12px 16px 0; }
+
+/* ── Card ── */
+.card { background:var(--surf2);border:1px solid var(--bdr);border-radius:18px;padding:18px;position:relative;overflow:hidden; }
+.card-label { font-size:.66rem;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:4px; }
+.card-title { font-family:'Syne';font-size:1rem;font-weight:700;margin-bottom:11px; }
+
+/* ── Clock card ── */
+.clock-card { text-align:center; }
+#clock { font-family:'DM Mono';font-weight:500;font-size:clamp(2.6rem,14vw,4rem);letter-spacing:-1px;background:linear-gradient(135deg,var(--cyan),var(--acc));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1; }
+#date { color:var(--muted);font-size:.78rem;margin-top:5px; }
+
+/* ── Pomodoro ── */
+.pomo-wrap { margin-top:14px;padding-top:14px;border-top:1px solid var(--bdr);text-align:center; }
+.pomo-phases { display:flex;justify-content:center;gap:6px;margin-bottom:7px; }
+.phase-dot { width:7px;height:7px;border-radius:50%;background:var(--bdr);transition:.3s; }
+.phase-dot.done { background:var(--acc); }
+#pomo-timer { font-family:'DM Mono';font-size:1.9rem;color:var(--acc);display:block;margin-bottom:10px; }
+.pomo-btns { display:flex;gap:8px;justify-content:center;flex-wrap:wrap; }
+.pomo-btn { background:none;border:1px solid var(--acc);color:var(--acc);padding:7px 16px;border-radius:30px;cursor:pointer;font-size:.78rem;font-weight:600;transition:.2s;font-family:'DM Sans'; }
+.pomo-btn:hover,.pomo-btn.running { background:var(--acc);color:#fff; }
+
+/* ── Session card ── */
+.session-card { background:linear-gradient(135deg,rgba(20,22,30,.99),rgba(10,11,18,.99)); }
+.session-inner { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+.session-info h3 { font-family:'Syne';font-size:.95rem;color:#fbbf24; }
+#session-timer { font-size:.76rem;color:var(--muted);margin-top:4px; }
+.session-meta { font-size:.7rem;color:var(--muted);margin-top:3px; }
+.btn-join { background:#fbbf24;color:#000;border:none;padding:10px 16px;border-radius:50px;font-weight:700;cursor:pointer;font-size:.78rem;white-space:nowrap;flex-shrink:0;transition:.2s; }
+
+/* ── Goal tabs ── */
+.tabs { display:flex;gap:6px;overflow-x:auto;padding:12px 16px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
+.tabs::-webkit-scrollbar { display:none; }
+.tab { padding:6px 13px;border-radius:30px;background:transparent;border:1px solid var(--bdr);color:var(--muted);cursor:pointer;white-space:nowrap;font-size:.76rem;font-family:'DM Sans';font-weight:500;transition:.2s;flex-shrink:0; }
+.tab.active { background:var(--acc);border-color:var(--acc);color:#fff; }
+
+/* ── Progress ── */
+.prog-row { display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-bottom:7px; }
+#progress-pct { color:var(--cyan);font-weight:700;font-family:'DM Mono'; }
+.bar-bg { height:5px;background:rgba(0,0,0,.35);border-radius:10px;overflow:hidden;margin-bottom:13px; }
+.bar-fill { height:100%;border-radius:10px;background:linear-gradient(90deg,var(--cyan),var(--acc),var(--pink));transition:width .6s var(--ease); }
+
+/* ── Goal input ── */
+.goal-input-row { display:flex;gap:7px;margin-bottom:12px; }
+.goal-input { flex:1;background:rgba(0,0,0,.25);border:1px solid var(--bdr);border-radius:10px;padding:9px 12px;color:var(--txt);outline:none;font-family:'DM Sans';font-size:.83rem;transition:.2s; }
+.goal-input:focus { border-color:var(--acc); }
+.goal-input::placeholder { color:var(--muted); }
+.btn-add { background:var(--acc);color:#fff;border:none;padding:9px 14px;border-radius:10px;font-weight:700;cursor:pointer;font-size:.8rem;transition:.2s; }
+.btn-add:active { transform:scale(.96); }
+
+/* ── Goal list ── */
+.goal-list { list-style:none; }
+.goal-row { display:flex;align-items:center;background:rgba(255,255,255,.025);padding:10px 12px;border-radius:11px;margin-bottom:6px;border:1px solid transparent;gap:10px;transition:.15s; }
+.goal-row.done { opacity:.4; }
+.goal-row.done .goal-text { text-decoration:line-through; }
+.check-box { width:19px;height:19px;border-radius:5px;border:2px solid var(--cyan);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.62rem;flex-shrink:0;transition:.15s; }
+.check-box.checked { background:var(--cyan);border-color:var(--cyan); }
+.goal-text { flex:1;font-size:.83rem;line-height:1.45;word-break:break-word; }
+.btn-del { color:var(--muted);cursor:pointer;font-size:.75rem;padding:5px;border-radius:6px;background:none;border:none;flex-shrink:0;transition:.15s; }
+.btn-del:hover { color:#f87171; }
+
+/* ── Intel card ── */
+.intel-icon { font-size:1.45rem;color:var(--acc);margin-bottom:8px; }
+#news-title { font-family:'Syne';font-size:.96rem; }
+#news-desc { color:var(--muted);font-size:.8rem;margin-top:5px;line-height:1.5; }
+.news-bar { height:2px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:14px;overflow:hidden; }
+#news-prog { height:100%;background:var(--acc);width:0%; }
+
+/* ── Quote card ── */
+.quote-card { padding:0; }
+.quote-img { width:100%;height:110px;object-fit:cover;opacity:.6;display:block; }
+.quote-body { padding:14px; }
+#quote-text { font-style:italic;line-height:1.6;font-size:.82rem;color:#cbd5e1; }
+#quote-author { color:var(--muted);font-size:.73rem;margin-top:6px; }
+
+/* ── Notes ── */
+.notes-area { width:100%;min-height:150px;background:rgba(0,0,0,.2);border:1px solid var(--bdr);border-radius:13px;padding:12px;color:var(--txt);resize:vertical;font-family:'DM Mono';font-size:.78rem;line-height:1.65;outline:none;transition:.2s; }
+.notes-area:focus { border-color:var(--acc); }
+
+/* ── Mobile bottom nav ── */
+.mobile-nav { position:fixed;bottom:0;left:0;right:0;height:calc(var(--bot) + var(--sab));padding-bottom:var(--sab);background:var(--surf);backdrop-filter:blur(24px);border-top:1px solid var(--bdr);z-index:800; }
+.mob-nav-row { height:var(--bot);display:flex;align-items:center;justify-content:space-around; }
+.mob-btn { display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);cursor:pointer;padding:7px 8px;border-radius:12px;font-size:.63rem;font-family:'DM Sans';min-width:48px;transition:.2s; }
+.mob-btn i { font-size:1.1rem; }
+.mob-btn.active { color:var(--acc); }
+
+/* ── Drawer overlay ── */
+.drawer-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:900; }
+.drawer-overlay.open { display:block; }
+
+/* ── Drawer ── */
+.drawer { position:fixed;left:0;top:0;bottom:0;width:min(290px,84vw);background:var(--surf);backdrop-filter:blur(28px);border-right:1px solid var(--bdr);z-index:901;transform:translateX(-100%);transition:transform .35s var(--ease);overflow-y:auto;padding:calc(var(--sat)+18px) 18px 40px; }
+.drawer.open { transform:translateX(0); }
+.drawer-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:22px; }
+.drawer-logo { font-family:'Syne';font-size:1.15rem;font-weight:800; }
+.drawer-close { background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.05rem;padding:6px;border-radius:8px; }
+.d-label { font-size:.68rem;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:7px;margin-top:4px; }
+.d-item { display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:10px;color:var(--muted);cursor:pointer;font-size:.86rem;text-decoration:none;transition:.2s;margin-bottom:2px;border:none;background:none;width:100%;font-family:'DM Sans';text-align:left; }
+.d-item:hover,.d-item.active { color:var(--txt);background:rgba(255,255,255,.05); }
+.d-item.active { color:var(--acc); }
+.d-item.danger { color:#fb923c !important; }
+.d-item.danger:hover { background:rgba(251,146,60,.1) !important; }
+.d-divider { height:1px;background:var(--bdr);margin:12px 0; }
+
+/* ── AI panel ── */
+.ai-panel { position:fixed;bottom:calc(var(--bot) + var(--sab) + 10px);right:10px;width:min(290px,calc(100vw - 20px));background:var(--surf);backdrop-filter:blur(24px);border:1px solid var(--bdr);border-radius:17px;box-shadow:0 14px 44px rgba(0,0,0,.55);z-index:700;overflow:hidden;transition:.3s var(--ease); }
+.ai-panel.min { height:50px; }
+.ai-head { padding:13px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--bdr); }
+.ai-head-left { display:flex;align-items:center;gap:8px; }
+.ai-live { width:7px;height:7px;border-radius:50%;background:#22c55e;animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+.ai-name { font-size:.85rem;font-weight:600; }
+.ai-chev { background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem; }
+.ai-body { display:flex;flex-direction:column;height:290px; }
+.msg-box { flex:1;overflow-y:auto;padding:11px 13px;font-size:.8rem;line-height:1.6; }
+.msg { padding:7px 11px;border-radius:11px;margin-bottom:6px;max-width:90%; }
+.msg.ai  { background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.18); }
+.msg.usr { background:rgba(255,255,255,.06);margin-left:auto; }
+.ai-input-row { display:flex;gap:7px;padding:9px 12px;border-top:1px solid var(--bdr); }
+.ai-input { flex:1;background:transparent;border:none;color:var(--txt);outline:none;font-family:'DM Sans';font-size:.8rem; }
+.ai-send { background:none;border:none;color:var(--acc);cursor:pointer;font-size:.9rem; }
+
+/* ── Focus button ── */
+.focus-btn { position:fixed;bottom:calc(var(--bot) + var(--sab) + 10px);left:10px;padding:10px 16px;border-radius:50px;background:var(--surf2);border:1px solid var(--bdr);color:var(--txt);font-weight:600;cursor:pointer;z-index:700;display:flex;align-items:center;gap:7px;font-family:'DM Sans';font-size:.76rem;transition:.2s;backdrop-filter:blur(12px); }
+
+/* ── Focus mode ── */
+body.focus-mode .hide-focus { display:none !important; }
+body.focus-mode .mobile-nav { display:none !important; }
+body.focus-mode .main-wrap  { padding-bottom:20px; }
+body.focus-mode .focus-btn  { bottom:20px;left:50%;transform:translateX(-50%); }
+body.focus-mode .ai-panel   { display:none; }
+body.focus-mode #clock { font-size:clamp(3.5rem,18vw,7rem); }
+
+/* ── Animations ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(13px)} to{opacity:1;transform:translateY(0)} }
+.card { animation:fadeUp .35s var(--ease) both; }
+
+/* ═══════════════════════════════════════════════════════
+   TABLET  ≥ 640px
+════════════════════════════════════════════════════════ */
+@media (min-width:640px) {
+    .section,.page-header,.quick-actions,.tabs { padding-left:24px;padding-right:24px; }
+    .install-banner { margin-left:24px;margin-right:24px; }
+
+    /* clock + session side-by-side */
+    .top-grid { display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start; }
+
+    /* intel + quote side-by-side */
+    .two-col { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   DESKTOP  ≥ 900px
+════════════════════════════════════════════════════════ */
+@media (min-width:900px) {
+    .mobile-nav   { display:none !important; }
+    .drawer-overlay,.drawer { display:none !important; }
+    body { display:flex;height:100vh;overflow:hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar { display:flex;flex-direction:column;width:260px;flex-shrink:0;height:100vh;background:var(--surf);backdrop-filter:blur(24px);border-right:1px solid var(--bdr);overflow:hidden;transition:width .35s var(--ease);position:relative;z-index:200; }
+    .sidebar.col { width:72px; }
+    .sb-logo { height:66px;display:flex;align-items:center;padding:0 17px;gap:12px;border-bottom:1px solid var(--bdr);flex-shrink:0; }
+    .sb-mark { width:33px;height:33px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,var(--acc),var(--pink));display:flex;align-items:center;justify-content:center;font-family:'Syne';font-weight:800;font-size:.9rem;color:#fff; }
+    .sb-text { font-family:'Syne';font-weight:800;font-size:1.05rem;letter-spacing:3px;color:#fff;white-space:nowrap;transition:opacity .2s; }
+    .sidebar.col .sb-text { opacity:0;pointer-events:none; }
+    .sb-toggle { width:29px;height:29px;border-radius:7px;background:transparent;border:none;color:var(--muted);cursor:pointer;margin-left:auto;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0; }
+    .sb-toggle:hover { color:var(--txt); }
+    .nav-list { flex:1;padding:10px 9px;overflow-y:auto;overflow-x:hidden; }
+    .nav-item { display:flex;align-items:center;padding:10px 11px;border-radius:11px;color:var(--muted);text-decoration:none;cursor:pointer;margin-bottom:3px;transition:.2s;white-space:nowrap;background:none;border:none;width:100%;font-family:'DM Sans';font-size:.86rem; }
+    .nav-item:hover { background:rgba(99,102,241,.08);color:var(--txt); }
+    .nav-item.active { background:rgba(99,102,241,.14);color:var(--acc); }
+    .nav-icon { width:21px;flex-shrink:0;text-align:center;margin-right:12px;font-size:.93rem; }
+    .nav-label { flex:1;transition:opacity .2s; }
+    .nav-chev { font-size:.66rem;transition:transform .3s; }
+    .nav-item.open .nav-chev { transform:rotate(180deg); }
+    .sidebar.col .nav-label,.sidebar.col .nav-chev { opacity:0;pointer-events:none; }
+    .sidebar.col .nav-item { justify-content:center;padding:12px 0; }
+    .sidebar.col .nav-icon { margin-right:0; }
+    .submenu { margin-left:32px;border-left:1px solid var(--bdr);overflow:hidden;max-height:0;transition:max-height .4s var(--ease); }
+    .submenu.open { max-height:500px; }
+    .sidebar.col .submenu { display:none; }
+    .sub-item { padding:7px 12px;font-size:.79rem;color:var(--muted);cursor:pointer;border-radius:7px;margin:2px 0;transition:.2s; }
+    .sub-item:hover,.sub-item.active { color:var(--txt);background:rgba(255,255,255,.04); }
+    .sub-item.active { color:var(--acc); }
+    .nav-div { height:1px;background:var(--bdr);margin:7px 9px; }
+    .nav-danger { color:#fb923c !important; }
+    .nav-danger:hover { background:rgba(251,146,60,.09) !important; }
+
+    /* ── Main wrap on desktop ── */
+    .main-wrap { flex:1;overflow-y:auto;height:100vh;padding-bottom:40px;padding-top:0; }
+
+    /* ── Larger padding on desktop ── */
+    .section,.page-header,.quick-actions,.tabs { padding-left:32px;padding-right:32px; }
+    .install-banner { margin-left:32px;margin-right:32px; }
+    .page-header { padding-top:28px; }
+    .section { padding-top:18px; }
+    .tabs { padding-top:18px; }
+
+    /* ── Desktop grids ── */
+    .top-grid { display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start; }
+    .two-col { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+
+    /* ── focus mode tweaks ── */
+    body.focus-mode .sidebar { transform:translateX(-100%);width:0; }
+    body.focus-mode .focus-btn { bottom:28px;left:28px;transform:none; }
+    body.focus-mode #clock { font-size:clamp(4rem,8vw,6rem); }
+
+    /* ── float controls ── */
+    .ai-panel { bottom:28px;right:28px;width:320px; }
+    .focus-btn { bottom:28px;left:28px; }
+    .toast { bottom:80px; }
+}
+@media (min-width:1200px) {
+    .section,.page-header,.quick-actions,.tabs { padding-left:40px;padding-right:40px; }
+    .install-banner { margin-left:40px;margin-right:40px; }
+}
+</style>
+</head>
+<body id="body">
+
+<canvas id="bg-canvas"></canvas>
+<div class="offline-badge">⚡ Offline</div>
+
+<!-- ═══════════════════════════════════════
+     DESKTOP SIDEBAR
+═══════════════════════════════════════ -->
+<nav class="sidebar" id="sidebar" style="display:none">
+    <div class="sb-logo">
+        <div class="sb-mark">S</div>
+        <span class="sb-text">STRATOS</span>
+        <button class="sb-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    </div>
+    <div class="nav-list">
+        <button class="nav-item active open" id="goals-nav" onclick="toggleGoalsMenu()">
+            <i class="fas fa-bullseye nav-icon"></i>
+            <span class="nav-label">Goals</span>
+            <i class="fas fa-chevron-down nav-chev" id="goals-chev"></i>
+        </button>
+        <div class="submenu open" id="goals-sub">
+            <div class="sub-item active" onclick="switchTab('daily',event)">Daily Objectives</div>
+            <div class="sub-item" onclick="switchTab('weekly',event)">Weekly Focus</div>
+            <div class="sub-item" onclick="switchTab('biweekly',event)">Bi-Weekly</div>
+            <div class="sub-item" onclick="switchTab('monthly',event)">Monthly Growth</div>
+            <div class="sub-item" onclick="switchTab('quarterly',event)">Quarterly</div>
+            <div class="sub-item" onclick="switchTab('halfyearly',event)">Half Yearly</div>
+            <div class="sub-item" onclick="switchTab('yearly',event)">Yearly Vision</div>
+        </div>
+        <div class="nav-div"></div>
+        <a href="https://prashashak.brightchamps.com/teacher-list" target="_blank" class="nav-item">
+            <i class="fas fa-rocket nav-icon"></i><span class="nav-label">Prashashak</span>
+        </a>
+        <a href="https://calendar.google.com" target="_blank" class="nav-item">
+            <i class="fas fa-calendar-day nav-icon"></i><span class="nav-label">Timeline</span>
+        </a>
+        <a href="https://gemini.google.com" target="_blank" class="nav-item">
+            <i class="fas fa-microchip nav-icon"></i><span class="nav-label">AI Neural</span>
+        </a>
+        <div class="nav-div"></div>
+        <button class="nav-item nav-danger" onclick="resetProgress()">
+            <i class="fas fa-sync nav-icon"></i><span class="nav-label">Reset Sector</span>
+        </button>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════
+     MAIN SCROLL AREA
+═══════════════════════════════════════ -->
+<div class="main-wrap" id="main-wrap">
+
+    <!-- Install banner -->
+    <div class="install-banner" id="install-banner">
+        <i class="fas fa-rocket" style="color:var(--acc)"></i>
+        <span>Install Stratos for the best experience</span>
+        <button class="btn-install" id="btn-install">Install</button>
+        <button class="btn-dismiss" onclick="document.getElementById('install-banner').classList.remove('show')">✕</button>
+    </div>
+
+    <!-- Header -->
+    <header class="page-header hide-focus">
+        <div>
+            <div class="welcome-line">Welcome, <span class="name-grad">Kingshuk</span></div>
+            <div class="hdr-sub" id="header-date">Loading…</div>
+        </div>
+        <div class="hdr-right">
+            <button class="icon-btn" onclick="shareWA()"><i class="fab fa-whatsapp" style="color:#22c55e"></i></button>
+            <div class="pfp"><img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=100" alt="K"></div>
+        </div>
+    </header>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions hide-focus" id="quick-actions">
+        <a href="https://github.com" target="_blank" class="qa-btn"><i class="fab fa-github"></i> Repository</a>
+        <a href="https://chatgpt.com" target="_blank" class="qa-btn"><i class="fas fa-bolt"></i> GPT-4o</a>
+        <a href="https://youtube.com" target="_blank" class="qa-btn"><i class="fab fa-youtube"></i> Archive</a>
+        <a href="https://claude.ai" target="_blank" class="qa-btn"><i class="fas fa-brain"></i> Claude</a>
+        <button class="qa-btn" onclick="addNewLink()" style="border-style:dashed;opacity:.6">+ Bind New</button>
+    </div>
+
+    <!-- Clock + Session -->
+    <div class="section hide-focus">
+        <div class="top-grid">
+            <div class="card clock-card" id="clock-card">
+                <div id="clock">00:00:00</div>
+                <div id="date">Loading…</div>
+                <div class="pomo-wrap">
+                    <div class="card-label">Pomodoro</div>
+                    <div class="pomo-phases" id="pomo-phases">
+                        <div class="phase-dot"></div><div class="phase-dot"></div>
+                        <div class="phase-dot"></div><div class="phase-dot"></div>
+                    </div>
+                    <span id="pomo-timer">25:00</span>
+                    <div class="pomo-btns">
+                        <button class="pomo-btn" id="pomo-btn" onclick="togglePomo()">▶ Begin</button>
+                        <button class="pomo-btn" onclick="resetPomo()">↺ Reset</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card session-card">
+                <div class="session-inner">
+                    <div class="session-info">
+                        <h3>Kiren's Sessions</h3>
+                        <div id="session-timer">Calculating…</div>
+                        <div class="session-meta">Mon · Tue · Wed @ 7 PM</div>
+                    </div>
+                    <button class="btn-join" onclick="window.open('https://meet.google.com/kdk-reax-npm','_blank')">
+                        <i class="fas fa-video"></i> Join
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Goal tabs -->
+    <div class="tabs hide-focus" id="goal-tabs">
+        <button class="tab active" onclick="switchTab('daily',event)">Daily</button>
+        <button class="tab" onclick="switchTab('weekly',event)">Weekly</button>
+        <button class="tab" onclick="switchTab('biweekly',event)">Bi-Weekly</button>
+        <button class="tab" onclick="switchTab('monthly',event)">Monthly</button>
+        <button class="tab" onclick="switchTab('quarterly',event)">Quarterly</button>
+        <button class="tab" onclick="switchTab('halfyearly',event)">Half-Yearly</button>
+        <button class="tab" onclick="switchTab('yearly',event)">Yearly</button>
+    </div>
+
+    <!-- Goals card -->
+    <div class="section hide-focus">
+        <div class="card">
+            <div class="card-label">Strategic Targets</div>
+            <div class="card-title" id="category-title">Daily Targets ⚡</div>
+            <div class="prog-row"><span>System Integrity</span><span id="progress-pct">0%</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="progress-bar" style="width:0%"></div></div>
+            <div class="goal-input-row">
+                <input type="text" id="goal-input" class="goal-input" placeholder="New target…" onkeydown="if(event.key==='Enter')addGoal()">
+                <button class="btn-add" onclick="addGoal()">ADD</button>
+            </div>
+            <div class="goal-list" id="goal-list"></div>
+        </div>
+    </div>
+
+    <!-- Intel + Quote -->
+    <div class="section hide-focus">
+        <div class="two-col">
+            <div class="card">
+                <div class="card-label">Global Intel</div>
+                <div class="intel-icon" id="news-icon"><i class="fas fa-bolt"></i></div>
+                <div id="news-title">Initializing…</div>
+                <div id="news-desc" style="color:var(--muted);font-size:.8rem;margin-top:4px;line-height:1.5">Fetching data.</div>
+                <div class="news-bar"><div id="news-prog"></div></div>
+            </div>
+            <div class="card quote-card">
+                <img class="quote-img" src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=70" alt="">
+                <div class="quote-body">
+                    <div id="quote-text">"The best way to predict the future is to create it."</div>
+                    <div id="quote-author">— Peter Drucker</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="section" style="padding-bottom:8px">
+        <div class="card">
+            <div class="card-label hide-focus">Mission Log</div>
+            <textarea class="notes-area" id="notes-area" placeholder="Secure deep work notes…"></textarea>
+        </div>
+    </div>
+
+</div><!-- /main-wrap -->
+
+<!-- ═══════════════════════════════════════
+     MOBILE BOTTOM NAV
+═══════════════════════════════════════ -->
+<nav class="mobile-nav" id="mobile-nav">
+    <div class="mob-nav-row">
+        <button class="mob-btn active" id="mob-home"  onclick="mobNav('home')"><i class="fas fa-home"></i><span>Home</span></button>
+        <button class="mob-btn" id="mob-goals"        onclick="mobNav('goals')"><i class="fas fa-bullseye"></i><span>Goals</span></button>
+        <button class="mob-btn" id="mob-timer"        onclick="mobNav('timer')"><i class="fas fa-stopwatch"></i><span>Timer</span></button>
+        <button class="mob-btn" id="mob-notes"        onclick="mobNav('notes')"><i class="fas fa-pen"></i><span>Notes</span></button>
+        <button class="mob-btn" id="mob-menu"         onclick="openDrawer()"><i class="fas fa-bars"></i><span>Menu</span></button>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════
+     MOBILE DRAWER
+═══════════════════════════════════════ -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+    <div class="drawer-head">
+        <span class="drawer-logo">STRATOS</span>
+        <button class="drawer-close" onclick="closeDrawer()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="d-label">Goal Tabs</div>
+    <button class="d-item active" id="dr-daily"      onclick="switchTab('daily',event);closeDrawer()"><i class="fas fa-bolt"         style="color:var(--acc)"></i>Daily Objectives</button>
+    <button class="d-item"        id="dr-weekly"     onclick="switchTab('weekly',event);closeDrawer()"><i class="fas fa-calendar-week" style="color:var(--acc)"></i>Weekly Focus</button>
+    <button class="d-item"        id="dr-biweekly"   onclick="switchTab('biweekly',event);closeDrawer()"><i class="fas fa-chart-line"  style="color:var(--acc)"></i>Bi-Weekly</button>
+    <button class="d-item"        id="dr-monthly"    onclick="switchTab('monthly',event);closeDrawer()"><i class="fas fa-gem"          style="color:var(--acc)"></i>Monthly Growth</button>
+    <button class="d-item"        id="dr-quarterly"  onclick="switchTab('quarterly',event);closeDrawer()"><i class="fas fa-chart-bar" style="color:var(--acc)"></i>Quarterly</button>
+    <button class="d-item"        id="dr-halfyearly" onclick="switchTab('halfyearly',event);closeDrawer()"><i class="fas fa-calendar" style="color:var(--acc)"></i>Half Yearly</button>
+    <button class="d-item"        id="dr-yearly"     onclick="switchTab('yearly',event);closeDrawer()"><i class="fas fa-trophy"       style="color:var(--acc)"></i>Yearly Vision</button>
+    <div class="d-divider"></div>
+    <div class="d-label">Quick Links</div>
+    <a href="https://prashashak.brightchamps.com/teacher-list" target="_blank" class="d-item"><i class="fas fa-rocket"       style="color:var(--acc)"></i>Prashashak</a>
+    <a href="https://calendar.google.com"                       target="_blank" class="d-item"><i class="fas fa-calendar-day" style="color:var(--acc)"></i>Calendar</a>
+    <a href="https://gemini.google.com"                         target="_blank" class="d-item"><i class="fas fa-microchip"    style="color:var(--acc)"></i>Gemini AI</a>
+    <a href="https://meet.google.com/kdk-reax-npm"              target="_blank" class="d-item"><i class="fas fa-video"        style="color:#fbbf24"></i>Kiren's Session</a>
+    <div class="d-divider"></div>
+    <button class="d-item danger" onclick="resetProgress();closeDrawer()"><i class="fas fa-sync"></i>Reset Current Sector</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     AI PANEL
+═══════════════════════════════════════ -->
+<div class="ai-panel min" id="ai-panel">
+    <div class="ai-head" onclick="toggleAI()">
+        <div class="ai-head-left"><div class="ai-live"></div><span class="ai-name">Sam — AI</span></div>
+        <button class="ai-chev"><i class="fas fa-chevron-up" id="ai-chev-icon"></i></button>
+    </div>
+    <div class="ai-body">
+        <div class="msg-box" id="msg-box">
+            <div class="msg ai">Ready for deployment, Kingshuk. Goal system synced.</div>
+        </div>
+        <div class="ai-input-row">
+            <input type="text" id="ai-input" class="ai-input" placeholder="Query Sam…" onkeydown="if(event.key==='Enter')askAI()">
+            <button class="ai-send" onclick="askAI()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<!-- Focus button -->
+<button class="focus-btn" id="focus-btn" onclick="toggleFocus()"><i class="fas fa-eye-slash"></i> Focus</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Boot: show sidebar only on desktop ── */
+function isDesk() { return window.matchMedia('(min-width:900px)').matches; }
+function syncSB() { document.getElementById('sidebar').style.display = isDesk() ? 'flex' : 'none'; }
+syncSB(); window.addEventListener('resize', syncSB);
+
+/* ── Neural mesh ── */
+(function(){
+    const c = document.getElementById('bg-canvas'), x = c.getContext('2d');
+    let p = [];
+    function init(){
+        c.width = window.innerWidth; c.height = window.innerHeight;
+        const n = isDesk() ? 65 : 35;
+        p = Array.from({length:n},()=>({x:Math.random()*c.width,y:Math.random()*c.height,vx:(Math.random()-.5)*.28,vy:(Math.random()-.5)*.28}));
+    }
+    function draw(){
+        x.clearRect(0,0,c.width,c.height);
+        x.fillStyle='#6366f1'; x.strokeStyle='rgba(99,102,241,.1)';
+        p.forEach((a,i)=>{
+            a.x+=a.vx; a.y+=a.vy;
+            if(a.x<0||a.x>c.width) a.vx*=-1;
+            if(a.y<0||a.y>c.height) a.vy*=-1;
+            x.beginPath(); x.arc(a.x,a.y,1.1,0,Math.PI*2); x.fill();
+            for(let j=i+1;j<p.length;j++){
+                const d=Math.hypot(a.x-p[j].x,a.y-p[j].y);
+                if(d<130){x.globalAlpha=(1-d/130)*.5;x.beginPath();x.moveTo(a.x,a.y);x.lineTo(p[j].x,p[j].y);x.stroke();x.globalAlpha=1;}
+            }
+        });
+        requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize',init); init(); draw();
+})();
+
+/* ── Goal data ── */
+const CATS = {daily:'Daily Targets ⚡',weekly:'Weekly Focus 🔮',biweekly:'Bi-Weekly Focus 📈',monthly:'Monthly Growth 💎',quarterly:'Quarterly Review 📊',halfyearly:'Half-Yearly 📆',yearly:'Yearly Vision 🏆'};
+let goals     = JSON.parse(localStorage.getItem('stratos_goals_v3')) || {daily:['Walk 7,000 steps','Jogged for 600 Counts','Forward Bending 100 counts','Vajrasana 11-15 min'],weekly:['Upload Finance Video'],biweekly:[],monthly:['₹70K Income Target'],quarterly:['Skill Acquisition'],halfyearly:[],yearly:['Total Corpus ₹6-8L']};
+let completed = JSON.parse(localStorage.getItem('stratos_done_v3'))  || {daily:[],weekly:[],biweekly:[],monthly:[],quarterly:[],halfyearly:[],yearly:[]};
+let curTab    = 'daily';
+
+function switchTab(tab, e) {
+    curTab = tab;
+    const keys = Object.keys(CATS);
+    document.querySelectorAll('#goal-tabs .tab').forEach((t,i) => t.classList.toggle('active', keys[i]===tab));
+    document.querySelectorAll('#goals-sub .sub-item').forEach((t,i) => t.classList.toggle('active', keys[i]===tab));
+    keys.forEach(k => { const el=document.getElementById('dr-'+k); if(el) el.classList.toggle('active', k===tab); });
+    document.getElementById('category-title').textContent = CATS[tab];
+    renderGoals();
+}
+function renderGoals(){
+    const list=goals[curTab]||[], done=completed[curTab]||[];
+    const pct=list.length?Math.round(done.length/list.length*100):0;
+    document.getElementById('progress-pct').textContent=pct+'%';
+    document.getElementById('progress-bar').style.width=pct+'%';
+    document.getElementById('goal-list').innerHTML=list.map((g,i)=>{
+        const isDone=done.includes(g), safe=g.replace(/'/g,'&#39;');
+        const txt=g.replace(/(https?:\/\/\S+)/g,`<button onclick="window.open('$1','_blank')" style="margin-left:6px;padding:2px 8px;border-radius:5px;border:none;background:var(--acc);color:#fff;cursor:pointer;font-size:.68rem">OPEN</button>`);
+        return `<div class="goal-row${isDone?' done':''}"><div class="check-box${isDone?' checked':''}" onclick="toggleGoal('${safe}')">${isDone?'<i class="fas fa-check" style="font-size:.6rem"></i>':''}</div><span class="goal-text">${txt}</span><button class="btn-del" onclick="removeGoal(${i})"><i class="fas fa-trash-alt"></i></button></div>`;
+    }).join('');
+}
+function addGoal(){
+    const inp=document.getElementById('goal-input'), val=inp.value.trim(); if(!val) return;
+    if(!goals[curTab]) goals[curTab]=[];
+    goals[curTab].push(val); inp.value=''; saveData(); showToast('Target added ✓');
+}
+function toggleGoal(name){
+    if(!completed[curTab]) completed[curTab]=[];
+    const idx=completed[curTab].indexOf(name);
+    idx>-1?completed[curTab].splice(idx,1):completed[curTab].push(name);
+    saveData();
+}
+function removeGoal(i){
+    const item=goals[curTab][i]; goals[curTab].splice(i,1);
+    const d=(completed[curTab]||[]).indexOf(item); if(d>-1) completed[curTab].splice(d,1);
+    saveData(); showToast('Removed');
+}
+function resetProgress(){
+    if(confirm('Clear progress for '+CATS[curTab]+'?')){completed[curTab]=[]; saveData(); showToast('Sector reset ↺');}
+}
+function saveData(){
+    localStorage.setItem('stratos_goals_v3',JSON.stringify(goals));
+    localStorage.setItem('stratos_done_v3',JSON.stringify(completed));
+    renderGoals();
+}
+
+/* ── Clock & session ── */
+function tick(){
+    const now=new Date();
+    document.getElementById('clock').textContent=now.toLocaleTimeString([],{hour12:false});
+    const ds=now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('date').textContent=ds;
+    document.getElementById('header-date').textContent=ds;
+    const days=[1,2,3]; let next=new Date(now); next.setHours(19,0,0,0);
+    while(!days.includes(next.getDay())||next<=now){next.setDate(next.getDate()+1);next.setHours(19,0,0,0);}
+    const d=next-now,h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000),s=Math.floor((d%60000)/1000);
+    document.getElementById('session-timer').textContent=`⏳ ${h}h ${m}m ${s}s`;
+}
+setInterval(tick,1000); tick();
+
+/* ── Pomodoro ── */
+let pomoInt=null,timeLeft=1500,pomoOn=false,pomoCycle=0;
+function togglePomo(){
+    if(pomoOn){clearInterval(pomoInt);pomoOn=false;document.getElementById('pomo-btn').textContent='▶ Begin';document.getElementById('pomo-btn').classList.remove('running');}
+    else{
+        pomoOn=true;document.getElementById('pomo-btn').textContent='⏸ Pause';document.getElementById('pomo-btn').classList.add('running');
+        pomoInt=setInterval(()=>{
+            timeLeft--;
+            const m=Math.floor(timeLeft/60),s=timeLeft%60;
+            document.getElementById('pomo-timer').textContent=`${m}:${s<10?'0':''}${s}`;
+            if(timeLeft<=0){
+                clearInterval(pomoInt);pomoOn=false;pomoCycle=Math.min(pomoCycle+1,4);
+                document.querySelectorAll('.phase-dot').forEach((d,i)=>d.classList.toggle('done',i<pomoCycle));
+                showToast('🎯 Ritual complete! Rest.');
+                document.getElementById('pomo-btn').textContent='▶ Begin';
+                document.getElementById('pomo-btn').classList.remove('running');
+                timeLeft=pomoCycle>=4?900:1500;
+                const mm=Math.floor(timeLeft/60);
+                document.getElementById('pomo-timer').textContent=`${mm}:00`;
+            }
+        },1000);
+    }
+}
+function resetPomo(){
+    clearInterval(pomoInt);pomoOn=false;timeLeft=1500;pomoCycle=0;
+    document.getElementById('pomo-timer').textContent='25:00';
+    document.getElementById('pomo-btn').textContent='▶ Begin';
+    document.getElementById('pomo-btn').classList.remove('running');
+    document.querySelectorAll('.phase-dot').forEach(d=>d.classList.remove('done'));
+}
+
+/* ── News rotator ── */
+const NEWS=[{t:'Deep Work',d:'Focus is the modern superpower. High intensity leads to high output.',i:'fa-brain'},{t:'Compound Growth',d:'Small daily improvements result in massive yearly transformations.',i:'fa-chart-line'},{t:'Executive State',d:'Decisions made in calmness yield the highest strategic value.',i:'fa-crown'},{t:'Wealth Building',d:'Money grows on the tree of persistence. Invest in yourself first.',i:'fa-coins'},{t:'Leadership Edge',d:'Leaders create more leaders, not followers.',i:'fa-users'}];
+let nI=0,nP=0;
+setInterval(()=>{nP++;document.getElementById('news-prog').style.width=nP+'%';if(nP>=100){nP=0;nI=(nI+1)%NEWS.length;const n=NEWS[nI];document.getElementById('news-title').textContent=n.t;document.getElementById('news-desc').textContent=n.d;document.getElementById('news-icon').innerHTML=`<i class="fas ${n.i}"></i>`;}},100);
+
+/* ── Quotes ── */
+const QQ=[{t:"The best way to predict the future is to create it.",a:"Peter Drucker"},{t:"Discipline is choosing between what you want now and what you want most.",a:"Abraham Lincoln"},{t:"You do not rise to the level of your goals. You fall to the level of your systems.",a:"James Clear"},{t:"Risk comes from not knowing what you are doing.",a:"Warren Buffett"},{t:"Focus on being productive instead of busy.",a:"Tim Ferriss"},{t:"What gets measured gets improved.",a:"Peter Drucker"},{t:"Dream big. Start small. Act now.",a:"Robin Sharma"},{t:"Work harder on yourself than you do on your job.",a:"Jim Rohn"},{t:"The future depends on what you do today.",a:"Mahatma Gandhi"},{t:"Fortune favors the bold.",a:"Virgil"},{t:"A goal without a plan is just a wish.",a:"Antoine de Saint-Exupéry"},{t:"Success is walking from failure to failure with no loss of enthusiasm.",a:"Winston Churchill"},{t:"The successful warrior is the average man, with laser-like focus.",a:"Bruce Lee"},{t:"Great things never come from comfort zones.",a:"Roy T. Bennett"},{t:"Leaders don't create followers, they create more leaders.",a:"Tom Peters"},{t:"Do not save what is left after spending, but spend what is left after saving.",a:"Warren Buffett"},{t:"Energy and persistence conquer all things.",a:"Benjamin Franklin"},{t:"Leadership is influence, nothing more, nothing less.",a:"John C. Maxwell"},{t:"An investment in knowledge pays the best interest.",a:"Benjamin Franklin"},{t:"The man who moves a mountain begins by carrying away small stones.",a:"Confucius"}];
+function showQuote(){const q=QQ[Math.floor(Math.random()*QQ.length)];document.getElementById('quote-text').textContent=`"${q.t}"`;document.getElementById('quote-author').textContent=`— ${q.a}`;}
+showQuote(); setInterval(showQuote,52000);
+
+/* ── Notes ── */
+const na=document.getElementById('notes-area');
+na.value=localStorage.getItem('stratos_notes')||'';
+na.addEventListener('input',()=>localStorage.setItem('stratos_notes',na.value));
+
+/* ── Sidebar (desktop) ── */
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('col');}
+function toggleGoalsMenu(){document.getElementById('goals-sub').classList.toggle('open');document.getElementById('goals-nav').classList.toggle('open');}
+
+/* ── Drawer (mobile) ── */
+function openDrawer(){document.getElementById('drawer-overlay').classList.add('open');document.getElementById('drawer').classList.add('open');}
+function closeDrawer(){document.getElementById('drawer-overlay').classList.remove('open');document.getElementById('drawer').classList.remove('open');}
+
+/* ── Mobile bottom nav ── */
+function mobNav(s){
+    document.querySelectorAll('.mob-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('mob-'+s).classList.add('active');
+    const t={home:'.page-header',goals:'#goal-list',timer:'#clock-card',notes:'#notes-area'};
+    const el=document.querySelector(t[s]); if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ── AI (Sam) ── */
+let aiOpen=false;
+function toggleAI(){
+    aiOpen=!aiOpen;
+    document.getElementById('ai-panel').classList.toggle('min',!aiOpen);
+    document.getElementById('ai-chev-icon').className=aiOpen?'fas fa-chevron-down':'fas fa-chevron-up';
+}
+function askAI(){
+    const inp=document.getElementById('ai-input'),q=inp.value.trim(); if(!q) return;
+    const box=document.getElementById('msg-box');
+    const um=document.createElement('div'); um.className='msg usr'; um.textContent=q; box.appendChild(um); inp.value='';
+    const l=q.toLowerCase(); let r;
+    if(l.includes('progress')||l.includes('percent')){const list=goals[curTab]||[],done=(completed[curTab]||[]).length;r=`You're at ${list.length?Math.round(done/list.length*100):0}% on ${CATS[curTab]}. ${done}/${list.length} done.`;}
+    else if(l.includes('goal')||l.includes('target')){r=`${CATS[curTab]}: ${(goals[curTab]||[]).join(', ')||'No targets set.'}`;}
+    else if(l.includes('time')){r=`Current time: ${new Date().toLocaleTimeString([],{hour12:false})}`;}
+    else{const def=['Focus on your highest-leverage activity.','Execute with precision. One task at a time.','Strategic thinking engaged. What\'s your next move?','Small actions compounding daily. Keep going.'];r=def[Math.floor(Math.random()*def.length)];}
+    setTimeout(()=>{const am=document.createElement('div');am.className='msg ai';am.textContent=r;box.appendChild(am);box.scrollTop=box.scrollHeight;},600);
+    box.scrollTop=box.scrollHeight; if(!aiOpen) toggleAI();
+}
+
+/* ── Focus mode ── */
+let focusMode=false;
+function toggleFocus(){
+    focusMode=!focusMode;
+    document.body.classList.toggle('focus-mode',focusMode);
+    document.getElementById('focus-btn').innerHTML=focusMode?'<i class="fas fa-th"></i> Dashboard':'<i class="fas fa-eye-slash"></i> Focus';
+}
+
+/* ── Custom links ── */
+function addNewLink(){
+    const name=prompt('Button name:'),url=prompt('URL (https://…):');
+    if(name&&url){const links=JSON.parse(localStorage.getItem('stratos_links')||'[]');links.push({name,url});localStorage.setItem('stratos_links',JSON.stringify(links));loadLinks();showToast('Link added ✓');}
+}
+function loadLinks(){
+    const links=JSON.parse(localStorage.getItem('stratos_links')||'[]');
+    const c=document.getElementById('quick-actions');
+    c.querySelectorAll('.custom-qa').forEach(el=>el.remove());
+    const addBtn=c.querySelector('[style*="dashed"]');
+    links.forEach(l=>{const a=document.createElement('a');a.className='qa-btn custom-qa';a.href=l.url;a.target='_blank';a.innerHTML=`<i class="fas fa-link"></i> ${l.name}`;c.insertBefore(a,addBtn);});
+}
+loadLinks();
+
+/* ── Toast ── */
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+
+/* ── Share ── */
+function shareWA(){window.open(`https://wa.me/?text=${encodeURIComponent('🚀 Stratos ['+CATS[curTab]+']: '+document.getElementById('progress-pct').textContent+' complete.')}`);}
+
+/* ── Offline ── */
+window.addEventListener('online',()=>document.body.classList.remove('offline'));
+window.addEventListener('offline',()=>document.body.classList.add('offline'));
+if(!navigator.onLine) document.body.classList.add('offline');
+
+/* ── PWA install ── */
+let dP;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dP=e;document.getElementById('install-banner').classList.add('show');});
+document.getElementById('btn-install').addEventListener('click',async()=>{if(!dP) return;dP.prompt();const{outcome}=await dP.userChoice;dP=null;document.getElementById('install-banner').classList.remove('show');if(outcome==='accepted') showToast('✅ Stratos installed!');});
+window.addEventListener('appinstalled',()=>{document.getElementById('install-banner').classList.remove('show');showToast('✅ Installed!');});
+
+/* ── Service worker ── */
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').then(r=>console.log('SW:',r.scope)).catch(e=>console.log('SW fail:',e)));
+
+/* ── Init ── */
+renderGoals();
+</script>
+</body>
+</html>
